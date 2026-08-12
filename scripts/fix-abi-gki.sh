@@ -38,10 +38,10 @@ fi
 SETUP_ENV="$WORK_DIR/build/_setup_env.sh"
 if [ -f "$SETUP_ENV" ]; then
   sed -i \
-    -e 's/export KBUILD_BUILD_USER=build-user/export KBUILD_BUILD_USER=superuseryu/g' \
-    -e 's/${KBUILD_BUILD_USER:-build-user}/${KBUILD_BUILD_USER:-superuseryu}/g' \
-    -e 's/export KBUILD_BUILD_HOST=build-host/export KBUILD_BUILD_HOST=github/g' \
-    -e 's/${KBUILD_BUILD_HOST:-build-host}/${KBUILD_BUILD_HOST:-github}/g' \
+    -e 's/export KBUILD_BUILD_USER=build-user/export KBUILD_BUILD_USER=builder/g' \
+    -e 's/${KBUILD_BUILD_USER:-build-user}/${KBUILD_BUILD_USER:-builder}/g' \
+    -e 's/export KBUILD_BUILD_HOST=build-host/export KBUILD_BUILD_HOST=mobx-task/g' \
+    -e 's/${KBUILD_BUILD_HOST:-build-host}/${KBUILD_BUILD_HOST:-mobx-task}/g' \
     "$SETUP_ENV"
 fi
 

@@ -60,10 +60,10 @@ DATE_TAG=$(date +'%Y%m%d')
 
 if [ "$WORKFLOW_TYPE" = "compat" ]; then
   _tag_prefix="compat-"
-  RELEASE_NAME="Seiran-GKI-Compat"
+  RELEASE_NAME="Kernel-GKI-Compat"
 else
   _tag_prefix=""
-  RELEASE_NAME="Seiran-GKI"
+  RELEASE_NAME="Kernel-GKI"
 fi
 
 if [ "$BUILD_TYPE" = "testing" ]; then

@@ -26,7 +26,7 @@ for ZIP in ./release_zips/AnyKernel3_*.zip; do
 done
 
 SUMMARY=""
-SUMMARY="${SUMMARY}# 🌸 Seiran Kernel — Build Summary"$'\n\n'
+SUMMARY="${SUMMARY}# 🌸 Kernel Kernel — Build Summary"$'\n\n'
 SUMMARY="${SUMMARY}| | |"$'\n'
 SUMMARY="${SUMMARY}|---|---|"$'\n'
 SUMMARY="${SUMMARY}| **Build** | Run #${GITHUB_RUN_NUMBER} · ${BUILD_LABEL} |"$'\n'

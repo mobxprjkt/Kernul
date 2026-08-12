@@ -12,9 +12,10 @@ set -e
 OUT_DIR="${WORK_DIR}/out"
 START=$(date +%s)
 
-export KBUILD_BUILD_USER="${KBUILD_BUILD_USER:-superuseryu}"
-export KBUILD_BUILD_HOST="${KBUILD_BUILD_HOST:-github}"
+export KBUILD_BUILD_USER="${KBUILD_BUILD_USER:-builder}"
+export KBUILD_BUILD_HOST="${KBUILD_BUILD_HOST:-mobx-task}"
 export PATH="${CLANG_DIR}/bin:$PATH"
+export TZ=Asia/Jakarta
 
 if command -v ccache &>/dev/null; then _CC="ccache clang"; else _CC="clang"; fi
 
