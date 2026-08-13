@@ -23,7 +23,7 @@ case "$SOURCE_TYPE" in
     ;;
 
   clo)
-    CLO_REPO="https://git.codelinaro.org/clo/la/kernel/msm-5.15"
+    CLO_REPO="https://github.com/mobxprjkt/Clo"
     CLO_BRANCH="kernel.lnx.5.15.r1-rel"
     if [ "${CLO_CACHE_HIT}" = "true" ] && [ -d "$KERNEL_SRC/.git" ]; then
       echo "[CLO] Cache hit — fetching delta only..."
