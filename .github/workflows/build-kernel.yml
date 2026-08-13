@@ -33,21 +33,6 @@ jobs:
       - name: "🛠️ Setup env"
         uses: ./.github/actions/setup-env
 
-      - name: "📌 Read CLO source pin"
-        if: inputs.source_type == 'clo'
-        id: clo-pin
-        run: |
-          echo "hash=$(jq -r .clo_sublevel sources/source-pins.json)" >> $GITHUB_OUTPUT
-
-      - name: "📦 Restore CLO source cache"
-        if: inputs.source_type == 'clo'
-        id: clo-src-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ env.KERNEL_SRC }}
-          key: clo-source-${{ steps.clo-pin.outputs.hash }}
-          restore-keys: clo-source-
-
       - name: "🌟 Clone kernel source"
         env:
           SOURCE_TYPE:   ${{ inputs.source_type }}
@@ -55,13 +40,6 @@ jobs:
           CLO_CACHE_HIT: ${{ steps.clo-src-cache.outputs.cache-hit }}
           CLO_FRAGMENT:  ${{ inputs.clo_fragment }}
         run: bash scripts/clone-source.sh
-
-      - name: "💾 Save CLO source cache"
-        if: inputs.source_type == 'clo'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.KERNEL_SRC }}
-          key: clo-source-${{ steps.clo-pin.outputs.hash }}
 
       - name: "🔧 Fix source warnings"
         run: bash scripts/fix-source-warnings.sh "${{ env.KERNEL_SRC }}"
