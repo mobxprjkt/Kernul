@@ -40,7 +40,7 @@ GKI_SUB="${GKI_SUB:-unknown}"
 echo "GKI 5.15     : $GKI_SUB"
 
 CLO_RAW=$(_curl \
-  "https://github.com/mobxprjkt/msm-5.15/blob/kernel.lnx.5.15.r1-rel/Makefile")
+  "https://raw.githubusercontent.com/mobxprjkt/msm-5.15/refs/heads/kernel.lnx.5.15.r1-rel/Makefile")
 CLO_SUB=$(echo "$CLO_RAW" | awk -F' *= *' \
   '/^VERSION /    {v=$2}
    /^PATCHLEVEL / {p=$2}
