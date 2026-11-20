@@ -73,6 +73,37 @@ copy_susfs_files() {
   mkdir -p fs include/linux
   cp -af "$payload/fs/." fs/
   cp -af "$payload/include/linux/." include/linux/
+
+  # Compatibility fix for SUSFS revisions that call SUSFS_LOGI_RL() but
+  # ship a logger block defining only SUSFS_LOGI()/SUSFS_LOGE().
+  if [[ -f fs/susfs.c ]] && grep -q 'SUSFS_LOGI_RL[[:space:]]*(' fs/susfs.c && \
+     ! grep -Eq '^[[:space:]]*#[[:space:]]*define[[:space:]]+SUSFS_LOGI_RL([[:space:]]|\()' fs/susfs.c; then
+    python3 - fs/susfs.c <<'PYCODE'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+s = p.read_text()
+marker = 'bool susfs_starts_with'
+if marker not in s:
+    raise SystemExit(f'[ERROR] cannot locate SUSFS logger insertion point in {p}')
+compat = r'''#ifndef SUSFS_LOGI_RL
+#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
+#define SUSFS_LOGI_RL(fmt, ...) \
+    do { \
+        if (susfs_is_log_enabled) \
+            pr_info_ratelimited("susfs:[%u][%d][%s] " fmt, \
+                current_uid().val, current->pid, __func__, ##__VA_ARGS__); \
+    } while (0)
+#else
+#define SUSFS_LOGI_RL(fmt, ...) do { } while (0)
+#endif
+#endif
+
+'''
+s = s.replace(marker, compat + marker, 1)
+p.write_text(s)
+PYCODE
+    log "Added missing SUSFS_LOGI_RL compatibility macro in fs/susfs.c"
+  fi
   log "Copied SUSFS support files from $payload"
 }
 
