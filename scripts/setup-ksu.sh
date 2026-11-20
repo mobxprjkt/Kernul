@@ -79,26 +79,48 @@ copy_susfs_files() {
 inject_susfs_init() {
   local cfile="$1"
   [[ -f "$cfile" ]] || fail "KSU init source missing: $cfile"
+
+  # Current KernelSU-Next dev-susfs moved its init implementation to
+  # kernel/core/init.c (kernelsu_init); older forks used kernel/ksu.c
+  # (ksu_core_init). Do not inject a second call when upstream already has it.
   if grep -q 'susfs_init[[:space:]]*(' "$cfile"; then
-    log "susfs_init already present"
+    log "SUSFS initialization already integrated in $cfile"
     return
   fi
+
   python3 - "$cfile" <<'PYCODE'
 import pathlib, re, sys
 p = pathlib.Path(sys.argv[1])
 s = p.read_text()
-if '#include <linux/susfs.h>' not in s:
+
+include = '#include <linux/susfs.h>'
+if include not in s:
     m = re.search(r'(?m)^#include <linux/[^>]+>\s*$', s)
     if not m:
         raise SystemExit(f'[ERROR] cannot find include insertion point in {p}')
-    s = s[:m.end()] + '\n#include <linux/susfs.h>' + s[m.end():]
-needle = 'ksu_core_init();'
-if needle not in s:
-    raise SystemExit(f'[ERROR] {needle!r} not found in {p}; SUSFS init needs manual integration')
-s = s.replace(needle, needle + '\n\tsusfs_init();', 1)
+    s = s[:m.end()] + '\n' + include + s[m.end():]
+
+block = '\n#ifdef CONFIG_KSU_SUSFS\n\tsusfs_init();\n#endif\n'
+
+# Older KSU/SukiSU layout.
+if 'ksu_core_init();' in s:
+    s = s.replace('ksu_core_init();', 'ksu_core_init();' + block, 1)
+else:
+    # Current KernelSU-Next dev-susfs layout: kernel/core/init.c.
+    fn = re.search(r'int\s+__init\s+kernelsu_init\s*\([^)]*\)\s*\{', s)
+    if not fn:
+        raise SystemExit(f'[ERROR] no supported KSU init function found in {p}')
+    tail = s[fn.end():]
+    # Insert after the first local declaration to keep declarations before statements.
+    decl = re.search(r'\n[ \t]*(?:int|bool|long|unsigned\s+\w+|struct\s+\w+\s*\*)\s+\w+[^;]*;', tail)
+    if not decl:
+        raise SystemExit(f'[ERROR] cannot find declaration in kernelsu_init() in {p}')
+    pos = fn.end() + decl.end()
+    s = s[:pos] + block + s[pos:]
+
 p.write_text(s)
 PYCODE
-  log "Injected SUSFS initialization in $cfile"
+  log "Integrated SUSFS initialization in $cfile"
 }
 
 if [[ "$KSU_TYPE" == "ksun" ]]; then
@@ -110,7 +132,8 @@ if [[ "$KSU_TYPE" == "ksun" ]]; then
   record_version KernelSU-Next ksun_tag.txt ksun_version.txt KSUN_TAG
   SUSFS_REPO='https://gitlab.com/simonpunk/susfs4ksu.git'
   SUSFS_BRANCH='gki-android13-5.15'
-  KSU_C='KernelSU-Next/kernel/ksu.c'
+  KSU_C='KernelSU-Next/kernel/core/init.c'
+  [[ -f "$KSU_C" ]] || KSU_C='KernelSU-Next/kernel/ksu.c'
 else
   rm -rf KernelSU KernelSU-Next drivers/kernelsu
   curl --fail --location --silent --show-error \
@@ -121,6 +144,7 @@ else
   SUSFS_REPO='https://github.com/ShirkNeko/susfs4ksu.git'
   SUSFS_BRANCH='gki-android13-5.15'
   KSU_C='KernelSU/kernel/ksu.c'
+  [[ -f "$KSU_C" ]] || KSU_C='KernelSU/kernel/core/init.c'
 fi
 
 git clone --depth=1 --branch "$SUSFS_BRANCH" "$SUSFS_REPO" susfs4ksu
