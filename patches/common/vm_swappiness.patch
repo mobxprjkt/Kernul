@@ -1,6 +1,6 @@
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
-@@ -191,7 +191,7 @@ struct scan_control {
+@@ -191,4 +191,4 @@ struct scan_control {
  /*
   * From 0 .. 200.  Higher means more swappy.
   */

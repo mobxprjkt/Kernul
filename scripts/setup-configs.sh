@@ -8,7 +8,13 @@ set -e
 : "${DEFCONFIG:?}"
 : "${KERNEL_DIR:?}"
 
+case "$KSU_TYPE" in ksun|suki|none) ;; *) echo "[ERROR] Unsupported KSU_TYPE: $KSU_TYPE" >&2; exit 2;; esac
+[ -f "$DEFCONFIG" ] || { echo "[ERROR] Defconfig not found: $DEFCONFIG" >&2; exit 2; }
+
 CF="$DEFCONFIG"
+
+# Make KSU config injection repeatable; stale options from another variant must not leak.
+sed -i '/^CONFIG_KSU[_=]/d; /^# CONFIG_KSU[ _]/d; /^CONFIG_KPM[=]/d; /^# CONFIG_KPM /d; /^CONFIG_BBG[=]/d; /^# CONFIG_BBG /d' "$CF"
 
 # Base cleanup
 sed -i 's/ cgroup_disable=pressure//'                    "$CF"
@@ -94,13 +100,14 @@ EOF
 if [ "$KSU_TYPE" = "ksun" ]; then
 cat >> "$CF" << 'EOF'
 CONFIG_KSU=y
+CONFIG_KPROBES=y
 CONFIG_KSU_SUSFS=y
 CONFIG_KSU_SUSFS_SUS_MAP=y
 CONFIG_KSU_SUSFS_SUS_PATH=y
 CONFIG_KSU_SUSFS_SUS_MOUNT=y
 CONFIG_KSU_SUSFS_SUS_KSTAT=y
 CONFIG_KSU_SUSFS_SPOOF_UNAME=y
-CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n
+# CONFIG_KSU_SUSFS_SUS_OVERLAYFS is not set
 CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y
 CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y
 CONFIG_KSU_SUSFS_TRY_UMOUNT=y
@@ -117,13 +124,14 @@ EOF
 elif [ "$KSU_TYPE" = "suki" ]; then
 cat >> "$CF" << 'EOF'
 CONFIG_KSU=y
+CONFIG_KPROBES=y
 CONFIG_KSU_SUSFS=y
 CONFIG_KSU_SUSFS_SUS_MAP=y
 CONFIG_KSU_SUSFS_SUS_PATH=y
 CONFIG_KSU_SUSFS_SUS_MOUNT=y
 CONFIG_KSU_SUSFS_SUS_KSTAT=y
 CONFIG_KSU_SUSFS_SPOOF_UNAME=y
-CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n
+# CONFIG_KSU_SUSFS_SUS_OVERLAYFS is not set
 CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y
 CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y
 CONFIG_KSU_SUSFS_TRY_UMOUNT=y
