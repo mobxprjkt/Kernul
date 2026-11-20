@@ -72,7 +72,7 @@ inject_susfs_init() {
     log "susfs_init already present"
     return
   fi
-  python3 - "$cfile" <<'PY'
+  python3 - "$cfile" <<'PYCODE'
 import pathlib, re, sys
 p = pathlib.Path(sys.argv[1])
 s = p.read_text()
@@ -81,19 +81,17 @@ if '#include <linux/susfs.h>' not in s:
     if not m:
         raise SystemExit(f'[ERROR] cannot find include insertion point in {p}')
     s = s[:m.end()] + '\n#include <linux/susfs.h>' + s[m.end():]
-# Insert only at the known KSU core initialization point; do not guess a function.
 needle = 'ksu_core_init();'
 if needle not in s:
     raise SystemExit(f'[ERROR] {needle!r} not found in {p}; SUSFS init needs manual integration')
 s = s.replace(needle, needle + '\n\tsusfs_init();', 1)
 p.write_text(s)
-PY
+PYCODE
   log "Injected SUSFS initialization in $cfile"
 }
 
 if [[ "$KSU_TYPE" == "ksun" ]]; then
   rm -rf KernelSU KernelSU-Next drivers/kernelsu
-  # Keep the SUSFS-enabled KSU-Next fork used by the matching 5.15 patchset.
   curl --fail --location --silent --show-error \
     https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh \
     | bash -s dev-susfs
@@ -120,6 +118,9 @@ log "SUSFS commit: $SUSFS_COMMIT"
 if [[ -n "${GITHUB_ENV:-}" ]]; then printf 'SUSFS_COMMIT=%s\n' "$SUSFS_COMMIT" >> "$GITHUB_ENV"; fi
 
 SUSFS_PATCH="susfs4ksu/kernel_patches/50_add_susfs_in_gki-android13-5.15.patch"
+# GKI/CLO 5.15 trees may omit trace-hook include lines retained as patch context.
+# Restore only those known context lines before the strict dry-run/apply.
+python3 "$WORK_DIR/scripts/susfs_restore_context.py" "$SUSFS_PATCH" "$KERNEL_DIR"
 apply_susfs_patch "$SUSFS_PATCH"
 copy_susfs_files susfs4ksu
 inject_susfs_init "$KSU_C"
