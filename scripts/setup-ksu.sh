@@ -141,13 +141,15 @@ else
     | bash -s main
   [[ -d KernelSU/kernel ]] || fail 'SukiSU setup did not produce KernelSU/kernel'
   record_version KernelSU suki_ksu_tag.txt suki_version.txt SUKI_TAG
-  SUSFS_REPO='https://github.com/ShirkNeko/susfs4ksu.git'
+  # The original ShirkNeko account/repository is currently unavailable.
+  # Use the public mirror that retains the matching 5.15 branch.
+  SUSFS_REPO='https://github.com/ndrancs/ShirkNeko_susfs4ksu.git'
   SUSFS_BRANCH='gki-android13-5.15'
   KSU_C='KernelSU/kernel/ksu.c'
   [[ -f "$KSU_C" ]] || KSU_C='KernelSU/kernel/core/init.c'
 fi
 
-git clone --depth=1 --branch "$SUSFS_BRANCH" "$SUSFS_REPO" susfs4ksu
+GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$SUSFS_BRANCH" "$SUSFS_REPO" susfs4ksu
 SUSFS_COMMIT=$(git -C susfs4ksu rev-parse --short HEAD)
 log "SUSFS commit: $SUSFS_COMMIT"
 if [[ -n "${GITHUB_ENV:-}" ]]; then printf 'SUSFS_COMMIT=%s\n' "$SUSFS_COMMIT" >> "$GITHUB_ENV"; fi
