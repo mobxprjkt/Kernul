@@ -45,10 +45,10 @@ apply_susfs_patch() {
   local patch_file="$1" tmp
   [[ -s "$patch_file" ]] || fail "SUSFS patch not found: $patch_file"
   tmp=$(mktemp)
-  if patch -p1 --dry-run --forward --fuzz=3 < "$patch_file" >"$tmp" 2>&1; then
-    patch -p1 --forward --fuzz=3 < "$patch_file"
+  if patch -p1 --batch --dry-run --forward --fuzz=3 < "$patch_file" >"$tmp" 2>&1; then
+    patch -p1 --batch --forward --fuzz=3 < "$patch_file"
     log "Applied $(basename "$patch_file")"
-  elif patch -p1 --dry-run --reverse --fuzz=3 < "$patch_file" >/dev/null 2>&1; then
+  elif patch -p1 --batch --dry-run --reverse --fuzz=3 < "$patch_file" >/dev/null 2>&1; then
     log "SUSFS patch already applied"
   else
     cat "$tmp" >&2
@@ -60,9 +60,20 @@ apply_susfs_patch() {
 
 copy_susfs_files() {
   local src="$1"
-  [[ -d "$src/fs" && -d "$src/include/linux" ]] || fail "SUSFS support files missing under $src"
-  cp -af "$src/fs/." fs/
-  cp -af "$src/include/linux/." include/linux/
+  local payload="$src/kernel_patches"
+
+  # SUSFS repositories keep the kernel support headers/sources in
+  # kernel_patches/{fs,include/linux}; accept the old root layout as fallback.
+  if [[ ! -d "$payload/fs" || ! -d "$payload/include/linux" ]]; then
+    payload="$src"
+  fi
+  [[ -d "$payload/fs" && -d "$payload/include/linux" ]] || \
+    fail "SUSFS support files missing under $src (checked kernel_patches/ and repository root)"
+
+  mkdir -p fs include/linux
+  cp -af "$payload/fs/." fs/
+  cp -af "$payload/include/linux/." include/linux/
+  log "Copied SUSFS support files from $payload"
 }
 
 inject_susfs_init() {

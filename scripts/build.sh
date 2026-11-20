@@ -44,6 +44,21 @@ MAKE_FLAGS=(
 )
 [[ "$SOURCE_TYPE" == gki* ]] && MAKE_FLAGS+=(BRANCH=android13-5.15-lts KMI_GENERATION=8)
 
+configure_tcp_congestion() {
+  local config_file="$1"
+  if grep -Eq '^config TCP_CONG_BBR3([[:space:]]|$)' net/ipv4/Kconfig; then
+    echo "[CONFIG] TCP BBRv3 is present; selecting bbr3"
+    ./scripts/config --file "$config_file" \
+      -e TCP_CONG_ADVANCED -d TCP_CONG_BBR -e TCP_CONG_BBR3 \
+      --set-str DEFAULT_TCP_CONG "bbr3" -d DEFAULT_BBR -e DEFAULT_BBR3
+  else
+    echo "[CONFIG] TCP BBRv3 is absent; falling back to upstream BBR"
+    ./scripts/config --file "$config_file" \
+      -e TCP_CONG_ADVANCED -e TCP_CONG_BBR -d TCP_CONG_BBR3 \
+      --set-str DEFAULT_TCP_CONG "bbr" -e DEFAULT_BBR -d DEFAULT_BBR3
+  fi
+}
+
 set -o pipefail
 mkdir -p "${OUT_DIR}/dist"
 cd "$KERNEL_SRC"
@@ -69,15 +84,9 @@ echo "[${SOURCE_TYPE^^}] Forcing mq-deadline and stripping BFQ..."
   -d DEFAULT_NONE \
   -e DEFAULT_DEADLINE \
   --set-str DEFAULT_MQ_IOSCHED "mq-deadline"
-echo "[${SOURCE_TYPE^^}] Re-enforcing TCP_CONG=bbr3..."
-./scripts/config --file "${OUT_DIR}/dist/.config" \
-  -e TCP_CONG_ADVANCED \
-  -d TCP_CONG_BBR \
-  -e TCP_CONG_WESTWOOD \
-  -e TCP_CONG_BBR3 \
-  --set-str DEFAULT_TCP_CONG "bbr3" \
-  -d DEFAULT_BBR \
-  -e DEFAULT_BBR3
+echo "[${SOURCE_TYPE^^}] Configuring TCP congestion control..."
+configure_tcp_congestion "${OUT_DIR}/dist/.config"
+./scripts/config --file "${OUT_DIR}/dist/.config" -e TCP_CONG_WESTWOOD
 echo "[${SOURCE_TYPE^^}] Re-enforcing ZRAM_DEF_COMP=lz4..."
 ./scripts/config --file "${OUT_DIR}/dist/.config" \
   -d ZRAM_DEF_COMP_LZORLE \
@@ -116,15 +125,9 @@ if [ -n "${CLO_FRAGMENT:-}" ]; then
     -d ZRAM_DEF_COMP_LZO \
     -d CRYPTO_LZO \
     --set-str ZRAM_DEF_COMP "lz4"
-  echo "[CLO] Re-enforcing TCP_CONG=bbr3 after fragment merge"
-  ./scripts/config --file "${OUT_DIR}/dist/.config" \
-    -e TCP_CONG_ADVANCED \
-    -d TCP_CONG_BBR \
-    -e TCP_CONG_WESTWOOD \
-    -e TCP_CONG_BBR3 \
-    --set-str DEFAULT_TCP_CONG "bbr3" \
-    -d DEFAULT_BBR \
-    -e DEFAULT_BBR3
+  echo "[CLO] Configuring TCP congestion control after fragment merge"
+  configure_tcp_congestion "${OUT_DIR}/dist/.config"
+  ./scripts/config --file "${OUT_DIR}/dist/.config" -e TCP_CONG_WESTWOOD
   echo "[CLO] Re-enforcing mq-deadline I/O scheduler after fragment merge"
   ./scripts/config --file "${OUT_DIR}/dist/.config" \
     -e MQ_IOSCHED_DEADLINE \
